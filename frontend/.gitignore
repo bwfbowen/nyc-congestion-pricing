@@ -1,0 +1,11 @@
+node_nodules/
+
+build/
+
+dist/
+
+.env
+
+npm-debug.log
+
+*.log
