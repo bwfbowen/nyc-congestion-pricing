@@ -5,3 +5,4 @@ geopandas>=0.10.0
 folium>=0.12.0
 matplotlib>=3.4.0
 uvicorn
+aiofiles
