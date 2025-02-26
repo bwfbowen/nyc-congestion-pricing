@@ -14,6 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 @app.get("/")
 def read_root():
     return {"NYC Congestion Pricing Dashboard"}
