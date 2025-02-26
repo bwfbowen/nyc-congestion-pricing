@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, Query
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from taxi import taxi
 
