@@ -8,7 +8,7 @@ function App() {
     return (
         <div className="dashboard-container">
             <div className="map-container">
-                <iframe src={mapURL} width="100%" height="100%" />
+                <iframe src={mapURL} width="100%" height="100%" title="NYC"/>
             </div>
             <Sidebar />
         </div>
