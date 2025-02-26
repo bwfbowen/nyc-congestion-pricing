@@ -13,7 +13,7 @@ function Sidebar() {
     const [plot, setPlot] = useState("Pickup");
     const [toggle, setToggle] = useState("Peak");
     const [collapsed, setCollapsed] = useState(false);
-    const timeURL = "https://nyc-congestion-pricing-backend.onrender.com/static/time.png";
+    const timeURL = "https://nyc-congestion-pricing-backend.onrender.com/time.png";
     
     const formatDate = (date) => {
         const month = String(date.getMonth() + 1).padStart(2, '0');

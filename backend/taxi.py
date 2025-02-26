@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 
 def taxi(date, pu_borough, do_borough, plot, hours, clear):
     
-    static_dir = "static"
+    # static_dir = "static"
 
     if clear == 1:
         m = folium.Map(location=[40.7128, -74.0060])
-        file_name = os.path.join(static_dir, "nyc.html")
+        # file_name = os.path.join(static_dir, "nyc.html")
+        file_name = "nyc.html"
         m.save(file_name)
         
         plt.figure(figsize=(10, 6))
@@ -20,7 +21,8 @@ def taxi(date, pu_borough, do_borough, plot, hours, clear):
         plt.ylabel("Frequency")
         plt.xlim(0, 24)  # Assuming 24-hour time scale
         plt.ylim(0, 1)   # Empty y-axis
-        distribution_file = os.path.join(static_dir, "time.png")
+        # distribution_file = os.path.join(static_dir, "time.png")
+        distribution_file = "time.png"
         plt.savefig(distribution_file)
         plt.close()
     
@@ -128,7 +130,8 @@ def taxi(date, pu_borough, do_borough, plot, hours, clear):
         legend_name=f"Number of {trip_type}",
     ).add_to(m)
 
-    file_name = os.path.join(static_dir, "nyc.html")
+    # file_name = os.path.join(static_dir, "nyc.html")
+    file_name = "nyc.html"
     m.save(file_name)
     
     print(f"Saved as '{file_name}' showing number of {trip_type}.")
@@ -139,7 +142,8 @@ def taxi(date, pu_borough, do_borough, plot, hours, clear):
     plt.title(f"Trip Duration Distribution: {pu_borough.capitalize()} to {do_borough.capitalize()} ({hours} hours)")
     plt.xlabel("Trip Duration (minutes)", fontsize=16)
     plt.ylabel(f"{plot} Frequency", fontsize=16)
-    distribution_file = os.path.join(static_dir, "time.png")
+    # distribution_file = os.path.join(static_dir, "time.png")
+    distribution_file = "time.png"
     plt.savefig(distribution_file)
     plt.close()
     

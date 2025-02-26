@@ -3,7 +3,7 @@ import Sidebar from "./components/Sidebar";
 import "./components/style.css";
 
 function App() {
-    const mapURL = "https://nyc-congestion-pricing-backend.onrender.com/static/nyc.html"
+    const mapURL = "https://nyc-congestion-pricing-backend.onrender.com/nyc.html"
 
     return (
         <div className="dashboard-container">

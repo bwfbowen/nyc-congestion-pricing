@@ -14,8 +14,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 @app.get("/")
 def read_root():
     return {"NYC Congestion Pricing Dashboard"}
@@ -34,6 +32,6 @@ async def get(
     """
     nyc_html, time_png = taxi(date, pu_borough, do_borough, plot, hours, clear)
     return {
-        "nyc_html": f"/static/{os.path.basename(nyc_html)}",
-        "time_png": f"/static/{os.path.basename(time_png)}"
+        "nyc_html": f"{os.path.basename(nyc_html)}",
+        "time_png": f"{os.path.basename(time_png)}"
     } 
