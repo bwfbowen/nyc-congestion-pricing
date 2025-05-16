@@ -4,149 +4,170 @@ import pyarrow.parquet as pq
 import geopandas as gpd
 import folium
 import matplotlib.pyplot as plt
+import numpy as np
+from codes import codes
 
-def taxi(date, pu_borough, do_borough, plot, hours, clear):
+def taxi(pre_start, pre_end, post_start, post_end, start, end, origin, destination, plot):
+    public = "../frontend/public"
     
-    # static_dir = "static"
+    origin_filter = codes.get(origin.lower(), set())
+    destination_filter = codes.get(destination.lower(), set())
 
-    if clear == 1:
-        m = folium.Map(location=[40.7128, -74.0060])
-        # file_name = os.path.join(static_dir, "nyc.html")
-        file_name = "nyc.html"
-        m.save(file_name)
+    def load(start_date, end_date):
+        start_day, start_month, start_year = map(int, start_date.split("-"))
+        end_day, end_month, end_year = map(int, end_date.split("-"))
+
+        lst = [] 
         
-        plt.figure(figsize=(10, 6))
-        plt.title("Empty Time Distribution")
-        plt.xlabel("Time")
-        plt.ylabel("Frequency")
-        plt.xlim(0, 24)  # Assuming 24-hour time scale
-        plt.ylim(0, 1)   # Empty y-axis
-        # distribution_file = os.path.join(static_dir, "time.png")
-        distribution_file = "time.png"
-        plt.savefig(distribution_file)
-        plt.close()
-    
-        return file_name, distribution_file
-    
-    month, year = date.split("-")
-    
-    codes = {
-        "crz": {50, 48, 163, 230, 161, 162, 229, 246, 68, 100, 
-                186, 90, 164, 234, 170, 233, 107, 137, 224, 158, 
-                249, 113, 114, 79, 4, 125, 211, 144, 148, 232, 
-                231, 45, 209, 13, 261, 87, 88, 12},
-        "bronx": {200, 240, 259, 254, 81, 51, 184, 220, 241, 174, 
-                  18, 20, 31, 32, 3, 185, 242, 183, 58, 136, 
-                  94, 235, 169, 47, 78, 59, 60, 248, 182, 212, 
-                  250, 213, 208, 46, 119, 247, 69, 167, 159, 147, 
-                  126, 199, 168},
-        "brooklyn": {55, 29, 150, 154, 108, 123, 210, 21, 149, 155, 
-                     11, 22, 14, 67, 26, 133, 227, 111, 257, 228, 
-                     178, 165, 89, 85, 71, 91, 39, 222, 76, 63, 
-                     77, 35, 72, 188, 62, 190, 181, 106, 40, 195, 
-                     54, 52, 33, 25, 65, 66, 34, 97, 49, 189, 
-                     61, 177, 225, 17, 217, 256, 80, 37, 36, 255, 
-                     112},
-        "manhattan": {153, 128, 127, 243, 120, 244, 116, 42, 152, 166, 
-                      41, 74, 194, 24, 151, 238, 239, 143, 142, 43, 
-                      75, 236, 263, 262, 237, 141, 140, 202},
-        "queens": {27, 201, 117, 86, 2, 132, 124, 219, 203, 180, 
-                   216, 10, 218, 219, 203, 139, 205, 215, 130, 197, 
-                   258, 96, 134, 28, 131, 122, 191, 38, 19, 101, 
-                   64, 175, 98, 9, 16, 15, 252, 171, 73, 192, 
-                   135, 121, 93, 253, 92, 53, 57, 56, 95, 196, 
-                   160, 198, 102, 157, 83, 82, 173, 70, 129, 138, 
-                   207, 223, 8, 179, 193, 146, 145, 226, 260, 157, 
-                   7},
-        "staten_island": {44, 204, 5, 84, 109, 110, 176, 172, 214, 6, 
-                          221, 115, 245, 206, 251, 187, 156, 23, 118, 99}
-        }
-    
-    pu_filter = codes.get(pu_borough.lower(), set())
-    do_filter = codes.get(do_borough.lower(), set())
-        
-    directory = f"data/{year}/{month}"
-    
-    df_list = []
-    for file in sorted(os.listdir(directory)):
-        if file.endswith(".parquet"):
-            color = file[0]
-            if color == "y":
-                pickup = 'tpep_pickup_datetime'
-                dropoff = 'tpep_dropoff_datetime'
-            elif color == "g":
-                pickup = 'lpep_pickup_datetime'
-                dropoff = 'lpep_dropoff_datetime'
-            elif color == "f":
-                pickup = 'pickup_datetime'
-                dropoff = 'dropOff_datetime'
-            columns = [pickup, dropoff, 'PULocationID', 'DOLocationID']
-            filepath = os.path.join(directory, file)
-            df = pq.read_table(filepath, columns=columns).to_pandas()
-            
-            df[pickup] = pd.to_datetime(df[pickup])
-            is_weekend = df[pickup].dt.dayofweek > 4
-            if hours == "Peak":
-                df = df[
-                    ((is_weekend) & (df[pickup].dt.hour.between(9, 20))) |
-                    ((~is_weekend) & (df[pickup].dt.hour.between(5, 20)))
-                ]
-            elif hours == "Overnight":
-                df = df[
-                    ((is_weekend) & ((df[pickup].dt.hour >= 21) | (df[pickup].dt.hour < 9))) |
-                    ((~is_weekend) & ((df[pickup].dt.hour >= 21) | (df[pickup].dt.hour < 5)))
-                ]
-            
-            df_list.append(df)
-            
-    taxi_data = pd.concat(df_list, ignore_index=True)
-    
-    taxi_data["trip_duration"] = (taxi_data[dropoff] - taxi_data[pickup]).dt.total_seconds() / 60
-    taxi_data = taxi_data[taxi_data["PULocationID"].isin(pu_filter)]
-    taxi_data = taxi_data[taxi_data["DOLocationID"].isin(do_filter)]
-    
+        for year in range(start_year, end_year + 1):
+            for month in range(start_month, end_month + 1):
+                
+                month_directory = f"processed/{year}/{month:02}.parquet"
+                
+                if not os.path.exists(month_directory):
+                    continue
+                else: 
+                    df = pq.read_table(month_directory).to_pandas()
+                    df = df[(df["pickup"].dt.day >= start_day) & (df["pickup"].dt.day <= end_day)]
+                    df = df[(df["pickup"].dt.hour >= start) & (df["pickup"].dt.hour <= end)] 
+                    df = df[df["origin"].isin(origin_filter) & df["destination"].isin(destination_filter)] 
+                    lst.append(df) 
+                    
+            data = pd.concat(lst, ignore_index=True)
+            return data
+
+    pre_data = load(pre_start, pre_end)
+    post_data = load(post_start, post_end)
+
+    pre_data["duration"] = (pre_data['dropoff'] - pre_data['pickup']).dt.total_seconds() / 60
+    post_data["duration"] = (post_data['dropoff'] - post_data['pickup']).dt.total_seconds() / 60
+
     nyc = gpd.read_file("taxi_zones/taxi_zones.shp")
+    nyc = nyc.to_crs("EPSG:4326")
     
-    heatmap = "PULocationID" if plot == "Pickup" else "DOLocationID"
-    trip_type = "Pickups" if plot == "Pickup" else "Drop-offs"
-    
-    taxi_zones = nyc[["LocationID", "geometry"]].rename(columns={"LocationID": heatmap})
-    trip_count = taxi_data[heatmap].value_counts().reset_index(name="count")
-    trip_count = trip_count.merge(taxi_zones, on=heatmap, how="left")
-    
-    m = folium.Map(location=[40.7128, -74.0060])
-    
-    gdf = gpd.GeoDataFrame(trip_count, geometry="geometry")
-    
+    key = "destination" if plot == "destination" else "origin"
+
+    zone_names = {}
+    name_columns = [col for col in nyc.columns if any(term in col.lower() for term in ['name', 'zone', 'borough'])]
+    if name_columns:
+        zone_names = dict(zip(nyc["LocationID"], nyc[name_columns[0]]))
+
+    pre_counts = pre_data[key].value_counts().rename("pre_count")
+    post_counts = post_data[key].value_counts().rename("post_count")
+
+    diff_counts = post_counts.sub(pre_counts, fill_value=0).reset_index()
+    diff_counts.columns = [key, "difference"]
+
+    taxi_zones = nyc[["LocationID", "geometry"]].rename(columns={"LocationID": key})
+    diff_counts = diff_counts.merge(taxi_zones, on=key, how="left")
+
+    m = folium.Map(location=[40.7128, -74.0060], zoom_start=12.5)
+
+    gdf = gpd.GeoDataFrame(diff_counts, geometry="geometry")
+
     folium.Choropleth(
         geo_data=gdf,
-        name=f"{trip_type} Heatmap",
+        name="Difference Heatmap",
         data=gdf,
-        columns=[heatmap, "count"],
-        key_on=f"feature.properties.{heatmap}",
-        fill_color="YlOrRd",
+        columns=[key, "difference"],
+        key_on=f"feature.properties.{key}",
+        fill_color="RdYlGn_r",
         fill_opacity=0.7,
         line_opacity=0.2,
-        legend_name=f"Number of {trip_type}",
+        legend_name="Difference in Taxi Trips", 
     ).add_to(m)
 
-    # file_name = os.path.join(static_dir, "nyc.html")
-    file_name = "nyc.html"
-    m.save(file_name)
+    heatmap_file = os.path.join(public, "map.html")
+    m.save(heatmap_file)
     
-    print(f"Saved as '{file_name}' showing number of {trip_type}.")
+    top_zones = pd.concat([
+        pre_data[key].value_counts().head(5),
+        post_data[key].value_counts().head(5)
+    ]).index.unique()[:5]  
     
-    # Generate trip duration distribution
-    plt.figure(figsize=(10, 6))
-    taxi_data["trip_duration"].hist(bins=50)
-    plt.title(f"Trip Duration Distribution: {pu_borough.capitalize()} to {do_borough.capitalize()} ({hours} hours)")
-    plt.xlabel("Trip Duration (minutes)", fontsize=16)
-    plt.ylabel(f"{plot} Frequency", fontsize=16)
-    # distribution_file = os.path.join(static_dir, "time.png")
-    distribution_file = "time.png"
-    plt.savefig(distribution_file)
+    fig, axs = plt.subplots(2, 3, figsize=(15, 10))
+    axs = axs.flatten()
+    bins = np.arange(0, 100, 5)
+    width = 2
+    
+    axs[0].bar(bins[:-1], np.histogram(pre_data["duration"], bins=bins)[0], 
+            width=width, alpha=0.7, label="Pre-Congestion Pricing", color="blue", align="edge")
+    axs[0].bar(bins[:-1] + width, np.histogram(post_data["duration"], bins=bins)[0], 
+            width=width, alpha=0.7, label="Post-Congestion Pricing", color="red", align="edge")
+    
+    axs[0].set_xlabel("Duration (minutes)")
+    axs[0].set_ylabel("Number of Trips")
+    axs[0].set_title("Overall Trip Distribution")
+    axs[0].set_xticks(bins[::2])
+    axs[0].legend()
+    
+    for i, zone_id in enumerate(top_zones):
+        zone_name = zone_names.get(zone_id, f"Zone {zone_id}")
+        
+        pre_zone = pre_data[pre_data[key] == zone_id]
+        post_zone = post_data[post_data[key] == zone_id]
+        
+        axs[i+1].bar(bins[:-1], np.histogram(pre_zone["duration"], bins=bins)[0], 
+                   width=width, alpha=0.7, label="Pre-Congestion Pricing", color="blue", align="edge")
+        axs[i+1].bar(bins[:-1] + width, np.histogram(post_zone["duration"], bins=bins)[0], 
+                   width=width, alpha=0.7, label="Post-Congestion Pricing", color="red", align="edge")
+        
+        axs[i+1].set_xlabel("Duration (minutes)")
+        axs[i+1].set_ylabel("Number of Trips")
+        axs[i+1].set_title(f"{zone_name}")
+        axs[i+1].set_xticks(bins[::2])
+        axs[i+1].legend()
+    
+    for i in range(len(top_zones)+1, len(axs)):
+        axs[i].set_visible(False)
+    
+    plt.tight_layout()
+    time_dist_file = os.path.join(public, "time.png")
+    plt.savefig(time_dist_file)
     plt.close()
     
-    print(f"Trip duration distribution saved as '{distribution_file}'")
+    plt.figure(figsize=(10, 6))
     
-    return (file_name, distribution_file)
+    cmap = plt.cm.get_cmap('tab10', len(top_zones))
+    
+    pre_average_time = pre_data.groupby("distance")["duration"].mean().reset_index()
+    post_average_time = post_data.groupby("distance")["duration"].mean().reset_index()
+    
+    pre_average_time = pre_average_time[pre_average_time["distance"] <= 5]
+    post_average_time = post_average_time[post_average_time["distance"] <= 5]
+    
+    plt.scatter(pre_average_time["distance"], pre_average_time["duration"], 
+               color="blue", alpha=0.2, label="Overall Pre-Congestion")
+    plt.scatter(post_average_time["distance"], post_average_time["duration"], 
+               color="red", alpha=0.2, label="Overall Post-Congestion")
+    
+    for i, zone_id in enumerate(top_zones):
+        zone_name = zone_names.get(zone_id, f"Zone {zone_id}")
+        
+        pre_zone = pre_data[pre_data[key] == zone_id]
+        if len(pre_zone) > 5:  # Only plot if we have enough data
+            pre_zone_avg = pre_zone.groupby("distance")["duration"].mean().reset_index()
+            pre_zone_avg = pre_zone_avg[pre_zone_avg["distance"] <= 5]
+            plt.scatter(pre_zone_avg["distance"], pre_zone_avg["duration"], 
+                       color=cmap(i), marker='o', s=80, edgecolor='black',
+                       label=f"{zone_name} - Pre", alpha=0.8)
+        
+        post_zone = post_data[post_data[key] == zone_id]
+        if len(post_zone) > 5:
+            post_zone_avg = post_zone.groupby("distance")["duration"].mean().reset_index()
+            post_zone_avg = post_zone_avg[post_zone_avg["distance"] <= 5]
+            plt.scatter(post_zone_avg["distance"], post_zone_avg["duration"], 
+                       color=cmap(i), marker='x', s=80, edgecolor='black',
+                       label=f"{zone_name} - Post", alpha=0.8)
+    
+    plt.xlabel("Distance (miles)")
+    plt.ylabel("Average Duration (minutes)")
+    plt.title("Average Duration vs. Distance by Zone")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.grid(True)
+    
+    scatter_file = os.path.join(public, "scatter.png")
+    plt.savefig(scatter_file, bbox_inches='tight')
+    plt.close()
+
+    return heatmap_file 

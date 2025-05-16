@@ -1,14 +1,13 @@
 import os
 from fastapi import FastAPI, Query
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from taxi import taxi
+from heatmap import heatmap
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://nyc-congestion-pricing.onrender.com", "http://localhost:3000"], 
+    allow_origins=["http://localhost:3000"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -18,20 +17,24 @@ app.add_middleware(
 def read_root():
     return {"NYC Congestion Pricing Dashboard"}
 
-@app.get("/taxi")
+@app.get("/map")
 async def get(
-    date: str = Query(..., title="Date (MM-YYYY)"),
-    pu_borough: str = Query(..., title="Pickup Borough"),
-    do_borough: str = Query(..., title="Dropoff Borough"),
-    plot: str = Query(..., title="Plot Type (Pickup/Dropoff)"),
-    hours: str = Query(..., title="Hours (Peak/Overnight)"),
+    pre: str = Query(..., title="Pre Date Range (DD-MM-YYYY, DD-MM-YYYY)"), 
+    post: str = Query(..., title="Post Date Range (DD-MM-YYYY, DD-MM-YYYY)"),
+    start: int = Query(..., title="Start Time"), 
+    end: int = Query(..., title="End Time"), 
+    origin: str = Query(..., title="Origin"), 
+    destination: str = Query(..., title="Destination"), 
+    plot: str = Query(..., title="Plot Type (Origin/Destination)"), 
+    data: str = Query(..., title="Data Type (Taxi/Citibike)"),
     clear: int = Query(0, title="Clear (1 for empty map)")
 ):
     """
     Endpoint to generate taxi data visualization.
     """
-    nyc_html, time_png = taxi(date, pu_borough, do_borough, plot, hours, clear)
-    return {
-        "nyc_html": f"{os.path.basename(nyc_html)}",
-        "time_png": f"{os.path.basename(time_png)}"
-    } 
+    # Split date ranges
+    pre_start, pre_end = pre.split(",")
+    post_start, post_end = post.split(",")
+
+    # Call heatmap function with parsed dates
+    heatmap(pre_start, pre_end, post_start, post_end, start, end, origin, destination, plot, data, clear)
