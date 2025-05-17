@@ -27,5 +27,5 @@ The dashboard will produce:
 
    ```npm start```
  
-4. Scroll to the bottom of the sidebar to choose filters, then click '**Generate**'. Due to the amount of data, the dashboard may take a while.
+4. Scroll to the bottom of the sidebar to choose filters, then click '**Generate**'. Due to the amount of data, the dashboard may take a while and may have to be reloaded.
 5. Click '**Clear**' to clear the dashboard.  
