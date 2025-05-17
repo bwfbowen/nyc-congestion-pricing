@@ -5,6 +5,7 @@ import geopandas as gpd
 import folium
 import matplotlib.pyplot as plt
 import numpy as np
+import glob
 from codes import codes
 
 def taxi(pre_start, pre_end, post_start, post_end, start, end, origin, destination, plot):
@@ -22,18 +23,26 @@ def taxi(pre_start, pre_end, post_start, post_end, start, end, origin, destinati
         for year in range(start_year, end_year + 1):
             for month in range(start_month, end_month + 1):
                 
-                month_directory = f"processed/{year}/{month:02}.parquet"
+                month_directory = f"processed/{year}/{month:02}"
                 
                 if not os.path.exists(month_directory):
                     continue
-                else: 
-                    df = pq.read_table(month_directory).to_pandas()
+                
+                files = glob.glob(os.path.join(month_directory, "*.parquet"))
+                if not files:
+                    continue
+                
+                for file in files: 
+                    df = pq.read_table(file).to_pandas()
                     df = df[(df["pickup"].dt.day >= start_day) & (df["pickup"].dt.day <= end_day)]
                     df = df[(df["pickup"].dt.hour >= start) & (df["pickup"].dt.hour <= end)] 
                     df = df[df["origin"].isin(origin_filter) & df["destination"].isin(destination_filter)] 
                     lst.append(df) 
                     
-            data = pd.concat(lst, ignore_index=True)
+            if lst: 
+                data = pd.concat(lst, ignore_index=True)
+            else: 
+                data = pd.DataFrame() 
             return data
 
     pre_data = load(pre_start, pre_end)
@@ -126,48 +135,24 @@ def taxi(pre_start, pre_end, post_start, post_end, start, end, origin, destinati
     plt.savefig(time_dist_file)
     plt.close()
     
-    plt.figure(figsize=(10, 6))
-    
-    cmap = plt.cm.get_cmap('tab10', len(top_zones))
-    
     pre_average_time = pre_data.groupby("distance")["duration"].mean().reset_index()
     post_average_time = post_data.groupby("distance")["duration"].mean().reset_index()
-    
-    pre_average_time = pre_average_time[pre_average_time["distance"] <= 5]
-    post_average_time = post_average_time[post_average_time["distance"] <= 5]
-    
-    plt.scatter(pre_average_time["distance"], pre_average_time["duration"], 
-               color="blue", alpha=0.2, label="Overall Pre-Congestion")
-    plt.scatter(post_average_time["distance"], post_average_time["duration"], 
-               color="red", alpha=0.2, label="Overall Post-Congestion")
-    
-    for i, zone_id in enumerate(top_zones):
-        zone_name = zone_names.get(zone_id, f"Zone {zone_id}")
-        
-        pre_zone = pre_data[pre_data[key] == zone_id]
-        if len(pre_zone) > 5:  # Only plot if we have enough data
-            pre_zone_avg = pre_zone.groupby("distance")["duration"].mean().reset_index()
-            pre_zone_avg = pre_zone_avg[pre_zone_avg["distance"] <= 5]
-            plt.scatter(pre_zone_avg["distance"], pre_zone_avg["duration"], 
-                       color=cmap(i), marker='o', s=80, edgecolor='black',
-                       label=f"{zone_name} - Pre", alpha=0.8)
-        
-        post_zone = post_data[post_data[key] == zone_id]
-        if len(post_zone) > 5:
-            post_zone_avg = post_zone.groupby("distance")["duration"].mean().reset_index()
-            post_zone_avg = post_zone_avg[post_zone_avg["distance"] <= 5]
-            plt.scatter(post_zone_avg["distance"], post_zone_avg["duration"], 
-                       color=cmap(i), marker='x', s=80, edgecolor='black',
-                       label=f"{zone_name} - Post", alpha=0.8)
-    
+
+    merged_data = pd.merge(pre_average_time, post_average_time, on="distance", suffixes=("_pre", "_post"), how="outer") 
+    merged_data = merged_data[merged_data["distance"] <= 100] 
+    merged_data = merged_data[(merged_data["duration_pre"] <= 500) & (merged_data["duration_post"] <= 500)]
+
+    plt.figure(figsize=(6, 4))
+    plt.scatter(merged_data["distance"], merged_data["duration_pre"], color="blue", alpha=0.5, label="Pre-Congestion Pricing")
+    plt.scatter(merged_data["distance"], merged_data["duration_post"], color="red", alpha=0.5, label="Post-Congestion Pricing")
     plt.xlabel("Distance (miles)")
     plt.ylabel("Average Duration (minutes)")
-    plt.title("Average Duration vs. Distance by Zone")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.title("Average Duration vs. Distance")
+    plt.legend()
     plt.grid(True)
     
-    scatter_file = os.path.join(public, "scatter.png")
-    plt.savefig(scatter_file, bbox_inches='tight')
-    plt.close()
+    scatter = os.path.join(public, "scatter.png")
+    plt.savefig(scatter) 
+    plt.close() 
 
     return heatmap_file 
